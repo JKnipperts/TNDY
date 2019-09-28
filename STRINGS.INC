@@ -3,14 +3,12 @@
 ;Note: Strings must be 0 terminated
 
 
-; ==================================================================
-; string_length - Return length of a string
-;
-; IN: AX = string location
-;
-; OUT: AX = length (other regs preserved)
-; ==========================7========================================
 string_length:
+
+; Return length of a string
+; IN: AX = string location
+; OUT: AX = length (other regs preserved)
+
 	push gs 			; The GS register can be used as temp store (386+)
 	pusha
 
@@ -34,14 +32,11 @@ string_length:
 	pop gs
 	ret
 
-; ==================================================================
-; string_uppercase - Convert zero-terminated string to upper case
-;
-; IN: AX = string location
-;
-; OUT: AX = string location
-; ==================================================================
 string_uppercase:
+; Converts zero-terminated string to upper case
+; IN: AX = string location
+; OUT: AX = string location
+
 	pusha
 	mov si, ax			; Use SI to access string
 
@@ -72,12 +67,11 @@ string_uppercase:
 	ret
 
 
-; ------------------------------------------------------------------
-; string_parse -- Take string (eg "run foo bar baz") and return
-; pointers to zero-terminated strings (eg AX = "run", BX = "foo" etc.)
-; IN: SI = string; OUT: AX, BX, CX, DX = individual strings
 
 string_parse:
+; pointers to zero-terminated strings 
+; IN: SI = string; OUT: AX, BX, CX, DX = individual strings
+
 	push si
 
 	mov ax, si			; AX = start of first string
@@ -141,11 +135,12 @@ string_parse:
 	ret
 
 
-; ------------------------------------------------------------------
+
+write_string:
+
 ; write_string -- Writes 0 terminated string to the screen and returns
 ; IN: SI = string;
 
-write_string:
   push dx
   push cx
   push ax
@@ -171,12 +166,13 @@ write_string:
 
 ret
 
-; ------------------------------------------------------------------
-; string_compare -- See if two strings match
+
+string_compare:
+
+; Compares two strings 
 ; IN: SI = string one, DI = string two
 ; OUT: carry set if same, clear if different
 
-string_compare:
 	pusha
 
 .c_more:
