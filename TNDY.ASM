@@ -320,8 +320,8 @@ Continue:
       		TitleMsg  	db 'I/O redirector for TNDY and TLPT three voice sound devices',10,13
 				db 'Version 0.82 - 09/25/2019 '
 				db 'by Jan Knipperts (Dragonsphere/DOSReloaded.de)',10,13
-				db 'Uses protected mode library (c) 1993 by FRIENDS Software',10,13
-				db 'TNDY and TLPT hardware by Matze79/DOSReloaded.de and Dreamblaster',10,13,0
+				db 'Uses i386 protected mode library by Andrew Zabolotny',10,13,0
+			
 
 
 		Return		db 10,13,0
