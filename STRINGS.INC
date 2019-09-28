@@ -9,26 +9,26 @@ string_length:
 ; IN: AX = string location
 ; OUT: AX = length (other regs preserved)
 
-	push gs 			; The GS register can be used as temp store (386+)
+	push gs 			
 	pusha
 
-	mov bx, ax			; Move location of string to BX
+	mov bx, ax			
 
-	xor cx, cx			; Counter CX = 0
+	xor cx, cx			
 
 .l_more:
         xor al,al
-	cmp byte [bx], al        	; Zero (end of string) yet?
+	cmp byte [bx], al        	
 	je .l_done
-	inc bx				; If not, keep adding
+	inc bx				
 	inc cx
 	jmp .l_more
 
 .l_done:
-	mov gs, cx			; Store count before restoring other registers
+	mov gs, cx			
 	popa
 
-	mov ax, gs			; Put count back into AX before returning
+	mov ax, gs			
 	pop gs
 	ret
 
@@ -38,7 +38,7 @@ string_uppercase:
 ; OUT: AX = string location
 
 	pusha
-	mov si, ax			; Use SI to access string
+	mov si, ax			
 
 .u_more:
         mov al,0
