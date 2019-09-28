@@ -10,9 +10,8 @@ The code I use to switch the computer into protected mode is not my own. I am us
     Consider them public domain, but I will be grateful if you keep my attribution somewhere.
       - Andrew Zabolotny, 24 October 2016
   
-  See also 
-    TEMU Tandy emulator: https://github.com/volkertb/temu-vsb
-    
-    TNDLPT driver by Peter De Wachter: https://github.com/pdewacht/tndlpt
+See also 
+TEMU Tandy emulator: https://github.com/volkertb/temu-vsb
+TNDLPT driver by Peter De Wachter: https://github.com/pdewacht/tndlpt
        
   
