@@ -1,7 +1,7 @@
 ; TSR to redirect port access
 ; for use with TNDY and TLPT tandy 3-voice sound devices
 ; by Jan Knipperts
-; v0.82 - 25th of September 2019
+; v0.83 - 29th of September 2019
 ;
 
 .MODEL  TINY
@@ -41,7 +41,7 @@ Setup_IOmap  proc near             ;Sets bits in IO map for Tandy and PS/2 ports
 		push cs
 		pop es
                 mov     IOportMap[0C0h/8],11111111b  ;Port 0C0-C07h
-                mov     IOportMap[0C0h/8],00000001b  ;Port 205h
+                mov     IOportMap[205h/8],00100000b  ;Port 205h
 		retn
 	       endp
 
@@ -318,9 +318,10 @@ Continue:
                 include strings.inc          ; String handling routines
 
       		TitleMsg  	db 'I/O redirector for TNDY and TLPT three voice sound devices',10,13
-				db 'Version 0.82 - 09/25/2019 '
+				db 'Version 0.83 - 09/29/2019 '
 				db 'by Jan Knipperts (Dragonsphere/DOSReloaded.de)',10,13
-				db 'Uses i386 protected mode library by Andrew Zabolotny',10,13,0
+				db 'Uses i386 protected mode library by Andrew Zabolotny',10,13,
+				db 'Greetings and thanks to Matze79 and Peter De Wachter',10,13,0
 			
 
 
