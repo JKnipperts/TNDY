@@ -1,7 +1,7 @@
 ; TSR to redirect port access
 ; for use with TNDY and TLPT tandy 3-voice sound devices
 ; by Jan Knipperts
-; v0.83 - 29th of September 2019
+; v0.9 - 10/17/2019
 ;
 
 .MODEL  TINY
@@ -23,6 +23,14 @@ Start:
 		InPort	    	        dw 0    ;Original port
 		OutPort			dw 0    ;Port to redirect to
 		LPT			db 0    ;use parallel port?
+		EmuPCjr			db 0	;Emulate PCjr?
+		SBOFF		        db 0    ;Disable Sound Blaster?
+                int15_old_handler       dw 0    ;Handler for int 15
+                int15_old_handler_seg   dw 0
+  	        int11_equipment  	dw 0	;Equipment bits returned by int 11h
+
+
+
 
 		;Include protected mode routines:
 
@@ -31,6 +39,38 @@ Start:
                 include 386plib.asm          ; PM library
                 include 386pint.asm          ; ISR's
                 include 386pdt.asm           ; Descriptor tables
+
+
+Int15_handler:
+              cmp ah,0C0h         ;Return system configuraton?
+              je .get_rom_table   ;Yes -> Send table
+              jmp dword ptr cs:int15_old_handler    ;Else jump to old handler
+
+  .get_rom_table:
+              sti
+              push cs
+              pop es
+              mov bx, offset _rom_table  ;ES:BX = pointer to descriptor table
+              xor ah,ah
+              iret
+  _rom_table:
+             dw 8      ;Length of descriptor table (8 minimum)
+             db 0FDh   ;Model byte
+             db 000h   ;Sub Model byte (Model FC 0B = IBM PS/1, FD 00 for PCjr)
+             db 000h   ;BIOS revision
+             db 070h   ;Feature Information
+             db 000h   ;Reserved
+	     db 000h
+	     db 000h
+	     db 000h
+
+
+Int11_handler:
+	    xor ax,ax
+	    mov ax,cs:int11_equipment	;Return our equipment bits
+	    iret
+
+
 
 
 ;============================== Non resident code ============================
@@ -42,6 +82,9 @@ Setup_IOmap  proc near             ;Sets bits in IO map for Tandy and PS/2 ports
 		pop es
                 mov     IOportMap[0C0h/8],11111111b  ;Port 0C0-C07h
                 mov     IOportMap[205h/8],00100000b  ;Port 205h
+		mov	IOportMap[388h/8],00000011b  ;Port 388h / 389h
+		mov	IOportMap[220h/8],11111111b  ;Port 220-227h
+		mov	IOportMap[228h/8],11111111b  ;Port 228-22Fh
 		retn
 	       endp
 
@@ -60,16 +103,34 @@ Delay	     proc near		;Just a small delay (in: AX = delay in ms)
 
 
 
-Mute_Tandy  proc near			;Mutes output of SN76496N
-		 mov dx,[InPort]
-		 mov al,09Fh
+Mute_Tandy  proc near			;Inits chip and Mutes output of SN76496N
+		 mov dx,cs:InPort
+
+		 mov al,1		        ;Init sound chip	
 		 out dx,al
+		 mov ax,50
+		 call Delay	
+		 mov al,9
+		 out dx,al
+		 mov ax,50
+                 call Delay
+			
+		 mov al,09Fh			 ;Mute output of all channels
+		 out dx,al
+		 mov ax,10 		
+		 call Delay
 		 mov al,0BFh
 		 out dx,al
+		 mov ax,10 		
+		 call Delay
 		 mov al,0DFh
 		 out dx,al
+		 mov ax,10 		
+		 call Delay
 		 mov al,0FFh
 		 out dx,al
+		 mov ax,100 		
+		 call Delay
 		 retn
 	    endp
 
@@ -106,6 +167,63 @@ Init:
                 cmp bx,0         ;Only one paramter?
                 je NoValidCmd   ;Not what we have expected!
 
+		push bx
+		push ax
+		push cx
+		clc
+
+;Check for possible second option
+		mov si,dx
+		mov di,offset PCJR
+		call string_compare
+		jc Enable_PCJR_2
+		clc
+                mov si,dx
+		mov di,offset NOSB
+		call string_compare
+		jc Enable_NOSB_2
+
+		jmp Check_Option
+
+Enable_PCJR_2:
+		mov EmuPCjr,1
+		jmp Check_Option
+
+Enable_NOSB_2:
+		mov SBOFF,1
+		jmp Check_Option
+
+
+Check_Option:	
+		pop cx
+		clc
+                mov si,cx
+		mov di,offset PCJR
+		call string_compare
+		jc Enable_PCJR
+		clc
+                mov si,cx
+		mov di,offset NOSB
+		call string_compare
+		jc Enable_NOSB
+
+		pop ax
+		pop bx
+		jmp Handle_Port_Cmds
+
+Enable_PCJR:
+		mov EmuPCjr,1
+		pop ax
+		pop bx
+		jmp Handle_Port_Cmds
+
+Enable_NOSB:
+		mov SBOFF,1
+		pop ax
+		pop bx
+
+
+Handle_Port_Cmds:
                 push bx
                 push ax
 
@@ -298,6 +416,8 @@ Init_LPT:
 		call delay
 
 
+
+
 Continue:
                 pop bx
 		clc
@@ -306,6 +426,48 @@ Continue:
                 call    SwitchToPM
                 call    SwitchToVM86
 
+		cmp	EmuPCjr,0
+		je	SkipEmulation
+
+		;Do some stuff to increase compatibility
+
+		;Change Int 15h (get system configuration) to emulate a PCjr
+
+                mov     ah,35h
+                mov     al,15h
+                int     21h
+                mov     int15_old_handler_seg,es
+                mov     int15_old_handler,bx
+
+                mov     ah,25h
+                mov     al,15h
+                mov     dx, offset Int15_handler
+                int     21h
+
+		;Change Int 11h (BIOS equipment flags) to return no 2nd DMA controller
+                xor     ax,ax
+		int	11h                 ;Get equipment bits
+                or      ax,100h             ;set Bit 8 (No DMA)
+		mov	Int11_equipment,ax  ;save equipment bits
+
+                mov     ah,25h
+                mov     al,11h
+                mov     dx, offset Int11_handler  ;Install new handler for int 11h
+                int     21h
+
+		mov    si,offset EmuMsg
+		call   write_string
+
+SkipEmulation:
+		;No Emulation required but do we have to disable SB/ADLIB?
+		cmp	SBOFF,0
+		je	SkipDisableSB  ;No
+
+		mov	si,offset SBMsg
+		call	write_string
+
+
+SkipDisableSB:
                 call    Mute_Tandy
                 mov si,offset SuccessMsg
                 call    write_string
@@ -318,11 +480,10 @@ Continue:
                 include strings.inc          ; String handling routines
 
       		TitleMsg  	db 'I/O redirector for TNDY and TLPT three voice sound devices',10,13
-				db 'Version 0.83 - 09/29/2019 '
+				db 'Version 0.9 - 10/17/2019 '
 				db 'by Jan Knipperts (Dragonsphere/DOSReloaded.de)',10,13
-				db 'Uses i386 protected mode library by Andrew Zabolotny',10,13,
+				db 'Uses i386 protected mode library by Andrew Zabolotny',10,13
 				db 'Greetings and thanks to Matze79 and Peter De Wachter',10,13,0
-			
 
 
 		Return		db 10,13,0
@@ -333,13 +494,20 @@ Continue:
 
 		ECPMsg		db 10,13,'Parallel port is in ECP mode, forcing SPP mode.',10,13,0
 
+		EmuMSG		db 10,13,'Int 15h and Int 11h changed',10,13,0
+
+		SBMSG		db 10,13,'Adlib and Sound Blaster disabled',10,13,0
+
                 BadOption       db 10,13,'Please specify port addresses as parameters: ',10,13
-				db 'TNDY.COM <Tandy port (source)> <Port of the TNDY or TLPT (destination)>',10,13
+				db 'TNDY.COM <Tandy port> <Port of the TNDY or TLPT> <Option>',10,13
 				db 10,13
-				db 'Possible source ports (in Hex): ',10,13
+				db 'Possible Tandy ports (in Hex): ',10,13
 				db '0C0, C0-C7, 205',10,13,10,13
-                                db 'Possible destination ports (in Hex): ',10,13
-				db '2E0, 2C0, 1E0, 0E0, 0C0, LPT1, LPT2, LPT3',10,13
+                                db 'Possible ports for TNDY or TLPT (in Hex): ',10,13
+				db '2E0, 2C0, 1E0, 0E0, 0C0, LPT1, LPT2, LPT3',10,13,10,13
+				db 'Possible Options (not mandatory):',10,13
+				db 'NOSB - Disables Adlib/Sound Blaster',10,13
+				db 'PCJR - Int 11h returns machine byte of a PCjr',10,13
 				db 10,13
 				db 'Example: ',10,13
 				db 'TNDY.COM C0 2C0',10,13
@@ -357,6 +525,8 @@ Continue:
                 SLPT1           db 'LPT1',0
                 SLPT2           db 'LPT2',0
 		SLPT3		db 'LPT3',0
+		PCJR		db 'PCJR',0
+		NOSB		db 'NOSB',0
 
 		CmdLine		db 10 dup(0)
 

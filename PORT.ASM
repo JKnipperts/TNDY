@@ -15,11 +15,24 @@ CheckPort:      cbw
                 add     [ebp],ax
                 mov     al,byte ptr [ebp-4]
 
+                cmp     dx,0C7h			;Tandy
+                jbe     @TandyPort
+
                 cmp     dx,205h
                 je      @PS1
 
-                cmp     dx,0C0h
-                jae     @TandyPort
+
+		cmp     dx,0388h		;Adlib
+		je	@Adlib
+		cmp	dx,0389h
+		je      @Adlib
+
+		cmp     dx,226h			;SB cmd port
+		je      @SB
+		cmp     dx,22Eh			;SB data port
+		je      @SB
+
+
 
 
 @Other:
@@ -35,7 +48,6 @@ CheckPort:      cbw
                 iretd
 
 @TandyPort:
-
                 cmp     dx,0C0h
                 je      .CheckC0
                 ja      .CheckC0C7
@@ -111,6 +123,17 @@ CheckPort:      cbw
                 je      .doit
                 jmp     @Other
 
+@Adlib:
+		;Hanldes access to OPL2
+		cmp  [ss:SBOFF],1
+		je  @@AllRight  
+		jmp .doit
+
+@SB:
+		;Hanldes access to SB DSP
+		cmp [ss:SBOFF],1
+		je @@AllRight
+		jmp .doit
 
 Out@@_AL:       push    dx
                 movzx   dx,byte ptr [ebx]

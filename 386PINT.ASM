@@ -228,23 +228,6 @@ InLoop: 	mov	ah,[ebx]
 		cmp	ah,66h	     ; opsize prefix
 		je	FSet
 
-; Scan for instructions
-;		 cmp	 ah,9Dh
-;		 je	 DoPopf
-;		 cmp	 ah,9Ch
-;		 je	 DoPushf
-;		 cmp	 ah,0FAh
-;		 je	 DoCli
-;		 cmp	 ah,0FBh
-;		 je	 DoSti
-;		 cmp	 ah,0CCh
-;		 je	 DoInt03
-;		 cmp	 ah,0CDh
-;		 je	 DoIntNN
-;		 cmp	 ah,0CFh
-;		 je	 DoIret
-;		 cmp	 ah,0F0h
-;		 je	 DoLock
 
 IfDef		PortHandler
 %		Include PortHandler
