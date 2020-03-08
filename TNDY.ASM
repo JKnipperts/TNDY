@@ -178,7 +178,7 @@ Handle_Options	proc near
 		call string_compare
 		jc Enable_NOOPL
 
-		mov FoundOption,0
+;		mov FoundOption,0
 		popa
                 retn
 
@@ -276,7 +276,7 @@ Check_Options:
                 call string_compare
                 jc .is205
 
-                jmp NoValidCmd
+                jmp .OnlyOne
 
 
         .isC0:
