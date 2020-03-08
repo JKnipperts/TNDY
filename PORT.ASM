@@ -48,6 +48,11 @@ CheckPort:      cbw
                 iretd
 
 @TandyPort:
+		cmp	[ss:InPort],0   ;No redirecting?
+		je	@Other
+		cmp	[ss:OutPort],0
+		je	@Other		
+
                 cmp     dx,0C0h
                 je      .CheckC0
                 ja      .CheckC0C7
@@ -125,7 +130,7 @@ CheckPort:      cbw
 
 @Adlib:
 		;Hanldes access to OPL2
-		cmp  [ss:SBOFF],1
+		cmp  [ss:OPLOFF],1
 		je  @@AllRight  
 		jmp .doit
 
@@ -143,7 +148,40 @@ Out@@_AL:       push    dx
 
 InAL_DX:        push    dx
 
-ReadPort:       cbw
+ReadPort:       
+		cmp     dx,0388h		;Adlib
+		je	@ReadAdlib
+		cmp	dx,0389h
+		je      @ReadAdlib
+		cmp     dx,226h			;SB cmd port
+		je      @ReadSB
+		cmp     dx,22Eh			;SB data port
+		je      @ReadSB
+		jmp 	.Readit
+
+@ReadAdlib:
+		cmp  [ss:OPLOFF],1
+		jne .Readit
+		cbw
+                add     [ebp],ax
+		mov	al,0FFh		;return FF (bus float) if disabled
+		mov     byte ptr [ebp-4],al
+                jmp     @@AllRight
+
+
+@ReadSB:
+		cmp  [ss:SBOFF],1
+		jne .Readit
+		cbw
+                add     [ebp],ax
+		mov	al,0FFh		;return FF (bus float) if disabled
+		mov     byte ptr [ebp-4],al
+                jmp     @@AllRight
+
+		
+
+.Readit:
+		cbw
                 add     [ebp],ax
 		in      al,dx
                 mov     byte ptr [ebp-4],al
