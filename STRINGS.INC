@@ -3,42 +3,47 @@
 ;Note: Strings must be 0 terminated
 
 
-string_length:
-
-; Return length of a string
+; ==================================================================
+; string_length - Return length of a string
+;
 ; IN: AX = string location
+;
 ; OUT: AX = length (other regs preserved)
-
-	push gs 			
+; ==========================7========================================
+string_length:
+	push gs 			; The GS register can be used as temp store (386+)
 	pusha
 
-	mov bx, ax			
+	mov bx, ax			; Move location of string to BX
 
-	xor cx, cx			
+	xor cx, cx			; Counter CX = 0
 
 .l_more:
         xor al,al
-	cmp byte [bx], al        	
+	cmp byte [bx], al        	; Zero (end of string) yet?
 	je .l_done
-	inc bx				
+	inc bx				; If not, keep adding
 	inc cx
 	jmp .l_more
 
 .l_done:
-	mov gs, cx			
+	mov gs, cx			; Store count before restoring other registers
 	popa
 
-	mov ax, gs			
+	mov ax, gs			; Put count back into AX before returning
 	pop gs
 	ret
 
-string_uppercase:
-; Converts zero-terminated string to upper case
+; ==================================================================
+; string_uppercase - Convert zero-terminated string to upper case
+;
 ; IN: AX = string location
+;
 ; OUT: AX = string location
-
+; ==================================================================
+string_uppercase:
 	pusha
-	mov si, ax			
+	mov si, ax			; Use SI to access string
 
 .u_more:
         mov al,0
@@ -67,11 +72,12 @@ string_uppercase:
 	ret
 
 
-
-string_parse:
-; pointers to zero-terminated strings 
+; ------------------------------------------------------------------
+; string_parse -- Take string (eg "run foo bar baz") and return
+; pointers to zero-terminated strings (eg AX = "run", BX = "foo" etc.)
 ; IN: SI = string; OUT: AX, BX, CX, DX = individual strings
 
+string_parse:
 	push si
 
 	mov ax, si			; AX = start of first string
@@ -135,12 +141,11 @@ string_parse:
 	ret
 
 
-
-write_string:
-
+; ------------------------------------------------------------------
 ; write_string -- Writes 0 terminated string to the screen and returns
 ; IN: SI = string;
 
+write_string:
   push dx
   push cx
   push ax
@@ -166,13 +171,12 @@ write_string:
 
 ret
 
-
-string_compare:
-
-; Compares two strings 
+; ------------------------------------------------------------------
+; string_compare -- See if two strings match
 ; IN: SI = string one, DI = string two
 ; OUT: carry set if same, clear if different
 
+string_compare:
 	pusha
 
 .c_more:

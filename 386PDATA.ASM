@@ -42,7 +42,6 @@ IOmapEnd        db      0                       ;End of IOportMap
                 NOWARN  ALN
                 align   4
                 WARN    ALN
-
 ; Stack for VM86 task
                 dd      VM86Stack dup (?)
 VM86SP          label   near

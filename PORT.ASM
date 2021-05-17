@@ -15,22 +15,42 @@ CheckPort:      cbw
                 add     [ebp],ax
                 mov     al,byte ptr [ebp-4]
 
-                cmp     dx,0C7h			;Tandy
+                cmp     dx,0C7h		;Tandy ports C0h-C7h
                 jbe     @TandyPort
 
-                cmp     dx,205h
+                cmp     dx,205h         ;PS/1 sound port 205h
                 je      @PS1
 
-
-		cmp     dx,0388h		;Adlib
+	        cmp     dx,388h		;Adlib address port
 		je	@Adlib
-		cmp	dx,0389h
+
+		cmp	dx,389h		;Adlib data port
 		je      @Adlib
 
-		cmp     dx,226h			;SB cmd port
+		cmp	dx,220h		;SB Pro left FM address port
+		je      @Adlib
+
+		cmp	dx,221h		;..and left data port
+		je      @Adlib
+
+		cmp	dx,222h		;SB Pro right FM address port
+		je      @Adlib
+
+		cmp	dx,223h		;..and right data port
+		je      @Adlib
+
+		cmp     dx,226h		;SB DSP control ports
 		je      @SB
-		cmp     dx,22Eh			;SB data port
+
+		cmp	dx,22Ah
 		je      @SB
+
+		cmp	dx,22Ch
+		je      @SB
+
+		cmp     dx,22Eh
+		je      @SB
+
 
 
 
@@ -51,12 +71,13 @@ CheckPort:      cbw
 		cmp	[ss:InPort],0   ;No redirecting?
 		je	@Other
 		cmp	[ss:OutPort],0
-		je	@Other		
+		je	@Other
 
                 cmp     dx,0C0h
                 je      .CheckC0
+                cmp     dx,0C0h
                 ja      .CheckC0C7
-		
+
                 jmp     @Other
 
                 .CheckC0:
@@ -67,9 +88,15 @@ CheckPort:      cbw
                 .CheckC0C7:
                 cmp     [ss:InPort],0C7h
                 jne     @Other
-                cmp     dx,0C7h
-                ja      @Other
-                jmp     .doit
+
+                cmp     [ss:LPT],1
+                je      .doit
+
+                sub     dx,0C0h   ;FÅ¸r Matze - !!!
+                add     dx,[ss:OutPort]
+                out     dx,al
+
+                jmp	@@AllRight
 
 
 .doit:
@@ -91,32 +118,32 @@ CheckPort:      cbw
                 inc     dx             ;Ctrl Port
 		inc 	dx
 
-		mov	al,12
-		out	dx,al
+		mov	al,0Ch
+		out     dx,al
 
                 dec     dx             ;Status port
-
                 mov     cx,18h
 
                 Wait_not_ready:
+
                 in      al,dx
-		test	al,40h
+		test	al,01000000b
 		loopnz    Wait_not_ready
 
-		inc     cx
+		cmp     cx,0
+		je      LPT_timed_out
+
+                mov     cx,18h
 
 		Wait_ready:
 		in 	al,dx
-		test	al,40h
+		test	al,01000000b
 		loopz	Wait_ready
 
-		inc dx
-		mov al,9
-		out dx,al
-
-		mov dx,03FFh
-		mov al,cl
-		out dx,al
+		LPT_timed_out:
+                inc     dx
+		mov     al,9
+		out     dx,al
 
                 popa
 
@@ -129,16 +156,17 @@ CheckPort:      cbw
                 jmp     @Other
 
 @Adlib:
-		;Hanldes access to OPL2
-		cmp  [ss:OPLOFF],1
-		je  @@AllRight  
-		jmp .doit
+		cmp  [ss:OPLOFF],1 ;OPL disabled?
+		je  @@AllRight	   ;Then do nothing
+		jmp .doit	   ;If not, write to port
 
 @SB:
-		;Hanldes access to SB DSP
 		cmp [ss:SBOFF],1
 		je @@AllRight
 		jmp .doit
+
+
+
 
 Out@@_AL:       push    dx
                 movzx   dx,byte ptr [ebx]
@@ -148,10 +176,10 @@ Out@@_AL:       push    dx
 
 InAL_DX:        push    dx
 
-ReadPort:       
+ReadPort:
 		cmp     dx,0388h		;Adlib
-		je	@ReadAdlib
-		cmp	dx,0389h
+		je		@ReadAdlib
+		cmp		dx,0389h
 		je      @ReadAdlib
 		cmp     dx,226h			;SB cmd port
 		je      @ReadSB
@@ -160,25 +188,22 @@ ReadPort:
 		jmp 	.Readit
 
 @ReadAdlib:
-		cmp  [ss:OPLOFF],1
-		jne .Readit
+		cmp     [ss:OPLOFF],1
+		jne     .Readit
 		cbw
                 add     [ebp],ax
 		mov	al,0FFh		;return FF (bus float) if disabled
 		mov     byte ptr [ebp-4],al
                 jmp     @@AllRight
-
 
 @ReadSB:
-		cmp  [ss:SBOFF],1
-		jne .Readit
+		cmp     [ss:SBOFF],1
+		jne     .Readit
 		cbw
                 add     [ebp],ax
 		mov	al,0FFh		;return FF (bus float) if disabled
 		mov     byte ptr [ebp-4],al
                 jmp     @@AllRight
-
-		
 
 .Readit:
 		cbw
